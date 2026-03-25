@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="main-header">
+            <div class="header-left">
+                <h1>Crypto Simulator</h1>
+                <div class="tabs">
+                    <button class="tab-btn active" id="tab-trading">Trading Dashboard</button>
+                    <button class="tab-btn" id="tab-portfolio">Eigenes Portfolio</button>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="user-info" class="hidden">
+                    <div class="user-details">
+                        <span id="display-username" class="username">User</span>
+                        <span id="display-balance" class="balance">$100,000.00</span>
+                    </div>
+                    <button id="logout-btn" class="btn secondary">Logout</button>
+                </div>
+                <button id="login-modal-btn" class="btn primary">Login zum Traden</button>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <!-- TRADING VIEW -->
+            <div id="trading-view" class="view">
+                <div class="cards">
+                    <!-- Bitcoin -->
+                    <div class="card" id="card-btc">
+                        <div class="card-top">
+                            <h2>Bitcoin (BTC)</h2>
+                            <div class="change positive" id="change-btc">+0.00%</div>
+                        </div>
+                        <div class="price" id="price-btc">$0.00</div>
+                        
+                        <div class="trading-controls">
+                            <div class="portfolio-info">Im Besitz: <span id="owned-btc">0.0000</span> BTC</div>
+                            <div class="buy-form">
+                                <input type="number" id="buy-amount-btc" min="0.1" step="0.1" value="0.1" disabled>
+                                <button class="btn buy-btn" id="buy-btn-btc" onclick="buyCrypto('btc')" disabled>Kaufen</button>
+                            </div>
+                        </div>
+
+                        <div class="chart-wrapper">
+                            <canvas id="chart-btc"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Ethereum -->
+                    <div class="card" id="card-eth">
+                        <div class="card-top">
+                            <h2>Ethereum (ETH)</h2>
+                            <div class="change positive" id="change-eth">+0.00%</div>
+                        </div>
+                        <div class="price" id="price-eth">$0.00</div>
+                        
+                        <div class="trading-controls">
+                            <div class="portfolio-info">Im Besitz: <span id="owned-eth">0.0000</span> ETH</div>
+                            <div class="buy-form">
+                                <input type="number" id="buy-amount-eth" min="0.1" step="0.1" value="0.1" disabled>
+                                <button class="btn buy-btn" id="buy-btn-eth" onclick="buyCrypto('eth')" disabled>Kaufen</button>
+                            </div>
+                        </div>
+
+                        <div class="chart-wrapper">
+                            <canvas id="chart-eth"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Solana -->
+                    <div class="card" id="card-sol">
+                        <div class="card-top">
+                            <h2>Solana (SOL)</h2>
+                            <div class="change positive" id="change-sol">+0.00%</div>
+                        </div>
+                        <div class="price" id="price-sol">$0.00</div>
+                        
+                        <div class="trading-controls">
+                            <div class="portfolio-info">Im Besitz: <span id="owned-sol">0.00</span> SOL</div>
+                            <div class="buy-form">
+                                <input type="number" id="buy-amount-sol" min="1" step="1" value="1" disabled>
+                                <button class="btn buy-btn" id="buy-btn-sol" onclick="buyCrypto('sol')" disabled>Kaufen</button>
+                            </div>
+                        </div>
+
+                        <div class="chart-wrapper">
+                            <canvas id="chart-sol"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Dogecoin -->
+                    <div class="card" id="card-doge">
+                        <div class="card-top">
+                            <h2>Dogecoin (DOGE)</h2>
+                            <div class="change positive" id="change-doge">+0.00%</div>
+                        </div>
+                        <div class="price" id="price-doge">$0.00</div>
+                        
+                        <div class="trading-controls">
+                            <div class="portfolio-info">Im Besitz: <span id="owned-doge">0</span> DOGE</div>
+                            <div class="buy-form">
+                                <input type="number" id="buy-amount-doge" min="10" step="10" value="10" disabled>
+                                <button class="btn buy-btn" id="buy-btn-doge" onclick="buyCrypto('doge')" disabled>Kaufen</button>
+                            </div>
+                        </div>
+
+                        <div class="chart-wrapper">
+                            <canvas id="chart-doge"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PORTFOLIO VIEW -->
+            <div id="portfolio-view" class="view hidden">
+                <div class="portfolio-summary">
+                    <h2>Deine Assets</h2>
+                    <div class="table-container">
+                        <table class="portfolio-table">
+                            <thead>
+                                <tr>
+                                    <th>Coin</th>
+                                    <th>Im Besitz</th>
+                                    <th>Ø Kaufkurs</th>
+                                    <th>Aktueller Kurs</th>
+                                    <th>Gewinn / Verlust</th>
+                                </tr>
+                            </thead>
+                            <tbody id="portfolio-table-body">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="portfolio-chart-section">
+                    <div class="chart-header">
+                        <h2>Langzeit-Verlauf</h2>
+                        <select id="portfolio-chart-selector">
+                            <!-- Filled dynamically -->
+                        </select>
+                    </div>
+                    <div class="chart-wrapper portfolio-large-chart">
+                        <canvas id="portfolioChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Account Login</h2>
+            <p>Logge dich ein, um mit $100.000 Startkapital zu traden.</p>
+            <div class="form-group">
+                <label for="username">Benutzername</label>
+                <input type="text" id="username" placeholder="Dein Name">
+            </div>
+            <div class="form-group">
+                <label for="password">Passwort</label>
+                <input type="password" id="password" placeholder="Passwort">
+            </div>
+            <div class="modal-actions">
+                <button id="cancel-login" class="btn secondary">Abbrechen</button>
+                <button id="submit-login" class="btn primary">Einloggen</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
