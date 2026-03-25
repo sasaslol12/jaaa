@@ -11,7 +11,8 @@ let user = {
     username: '',
     balance: 100000.00,
     portfolio: { btc: 0, eth: 0, sol: 0, doge: 0 },
-    invested: { btc: 0, eth: 0, sol: 0, doge: 0 }
+    invested: { btc: 0, eth: 0, sol: 0, doge: 0 },
+    history: []
 };
 
 if (activeUsername && usersDb[activeUsername]) {
@@ -20,15 +21,21 @@ if (activeUsername && usersDb[activeUsername]) {
     user.balance = usersDb[activeUsername].balance;
     user.portfolio = usersDb[activeUsername].portfolio;
     user.invested = usersDb[activeUsername].invested || { btc: 0, eth: 0, sol: 0, doge: 0 };
+    user.history = usersDb[activeUsername].history || [];
 } else {
     localStorage.removeItem(ACTIVE_USER_KEY);
 }
 
 function saveUserState() {
     if (user.isLoggedIn && user.username) {
-        usersDb[user.username].balance = user.balance;
-        usersDb[user.username].portfolio = user.portfolio;
-        usersDb[user.username].invested = user.invested;
+        // Use case insensitive mapping key
+        const lowerU = user.username.toLowerCase();
+        let key = Object.keys(usersDb).find(k => k.toLowerCase() === lowerU) || user.username;
+        
+        usersDb[key].balance = user.balance;
+        usersDb[key].portfolio = user.portfolio;
+        usersDb[key].invested = user.invested;
+        usersDb[key].history = user.history;
         localStorage.setItem(USERS_KEY, JSON.stringify(usersDb));
     }
 }
@@ -151,7 +158,7 @@ function seedData() {
 
     // Seed long history
     Object.keys(cryptos).forEach(key => {
-        let crypto = cryptos[key]; let price = crypto.history[0]; // Start matching newest of short backwards
+        let crypto = cryptos[key]; let price = crypto.history[0]; 
         let l_temp = [];
         for (let i = 0; i < maxLongDataPoints; i++) {
             l_temp.push(price);
@@ -162,7 +169,7 @@ function seedData() {
     });
 
     for (let i = maxLongDataPoints - 1; i >= 0; i--) {
-        let pastTime = new Date(now.getTime() - i * 10000); // 10s intervals
+        let pastTime = new Date(now.getTime() - i * 10000); 
         longTimeLabels.push(pastTime.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit' }));
     }
 }
@@ -176,7 +183,6 @@ setInterval(() => {
     tickCount++;
     let now = new Date();
     
-    // Process fast tick (2s)
     let timeString = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
     timeLabels.push(timeString);
     if (timeLabels.length > maxDataPoints) timeLabels.shift();
@@ -186,7 +192,6 @@ setInterval(() => {
         let crypto = cryptos[key];
         previousPrices[key] = crypto.price;
         
-        // Random walk
         let trend = (Math.random() - 0.5) * crypto.volatility * 1.5;
         let suddenSpike = (Math.random() > 0.8) ? (Math.random() - 0.5) * crypto.volatility * 2.5 : 0;
         crypto.price = crypto.price * (1 + trend + suddenSpike);
@@ -199,7 +204,6 @@ setInterval(() => {
         crypto.chart.update();
     });
 
-    // Process long tick (every 10s = 5 ticks)
     if (tickCount % 5 === 0) {
         longTimeLabels.push(now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit' }));
         if (longTimeLabels.length > maxLongDataPoints) longTimeLabels.shift();
@@ -211,7 +215,7 @@ setInterval(() => {
         
         if (portfolioChart) {
             portfolioChart.data.labels = longTimeLabels;
-            updatePortfolioChartData(); // Ensures current active line is updated
+            updatePortfolioChartData();
         }
     }
 
@@ -269,45 +273,53 @@ function updateUI(previousPrices) {
     if (!document.getElementById('portfolio-view').classList.contains('hidden')) {
         updatePortfolioView();
     }
+    if (!document.getElementById('leaderboard-view').classList.contains('hidden')) {
+        updateLeaderboardView();
+    }
 }
 
-// --- PORTFOLIO LOGIC ---
+// --- PORTFOLIO & SELL LOGIC ---
 function updatePortfolioView() {
     const tbody = document.getElementById('portfolio-table-body');
     tbody.innerHTML = '';
     
-    let totalValue = 0;
     let hasCoins = false;
     
     Object.keys(cryptos).forEach(key => {
         let amount = user.portfolio[key];
-        if (amount <= 0.000001) return; // threshold for floating point
+        if (amount <= 0.000001) return;
         
         hasCoins = true;
         let avgPrice = user.invested[key] / amount;
-        let currentValue = amount * cryptos[key].price;
-        let profitLoss = ((cryptos[key].price - avgPrice) / avgPrice) * 100;
+        if(isNaN(avgPrice) || !isFinite(avgPrice)) avgPrice = 0;
         
+        let profitLoss = ((cryptos[key].price - avgPrice) / avgPrice) * 100;
         if(avgPrice === 0) profitLoss = 0;
 
-        totalValue += currentValue;
-        
         let plClass = profitLoss >= 0 ? 'pl-positive' : 'pl-negative';
         let plSign = profitLoss >= 0 ? '+' : '';
+        let step = (key === 'btc' || key === 'eth') ? '0.1' : (key === 'sol' ? '1' : '10');
+        let amountFormatted = amount.toFixed((key==='doge'||key==='sol')?2:4);
         
         let tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${cryptos[key].name}</strong> <span style="color:var(--text-secondary);font-size:0.85rem">(${key.toUpperCase()})</span></td>
-            <td>${amount.toFixed((key==='doge'||key==='sol')?2:4)}</td>
+            <td>${amountFormatted}</td>
             <td>${formatCurrency(avgPrice)}</td>
             <td>${formatCurrency(cryptos[key].price)}</td>
             <td class="${plClass}">${plSign}${profitLoss.toFixed(2)}%</td>
+            <td>
+                <div class="sell-form">
+                    <input type="number" id="sell-amount-${key}" class="sell-input" min="${step}" step="${step}" max="${amountFormatted}" value="${amountFormatted}">
+                    <button class="btn small sell-btn" onclick="sellCrypto('${key}')">Verkaufen</button>
+                </div>
+            </td>
         `;
         tbody.appendChild(tr);
     });
     
     if (!hasCoins) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 2rem;">Du besitzt aktuell keine Coins. Kaufe welche im Trading Tab!</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">Du besitzt aktuell keine Coins. Kaufe welche im Trading Tab!</td></tr>`;
     }
     
     updatePortfolioDropdown();
@@ -363,8 +375,41 @@ function updatePortfolioChartData() {
         portfolioChart.update();
     }
 }
-
 document.getElementById('portfolio-chart-selector').addEventListener('change', updatePortfolioChartData);
+
+
+// --- LOG TAB LOGIC ---
+function updateLogView() {
+    const tbody = document.getElementById('log-table-body');
+    tbody.innerHTML = '';
+    
+    if (!user.history || user.history.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 2rem;">Noch keine Trading-Aktivitäten vorhanden.</td></tr>`;
+        return;
+    }
+    
+    user.history.forEach(entry => {
+        let typeHtml = entry.type === 'buy' ? '<span style="color:var(--positive);font-weight:600;">Kauf</span>' : '<span style="color:var(--negative);font-weight:600;">Verkauf</span>';
+        let profitHtml = '<span style="color:var(--text-secondary)">-</span>';
+        
+        if (entry.type === 'sell' && entry.profit !== null && entry.profit !== undefined) {
+            let pClass = entry.profit >= 0 ? 'pl-positive' : 'pl-negative';
+            let pSign = entry.profit >= 0 ? '+' : '';
+            profitHtml = `<span class="${pClass}">${pSign}${entry.profit.toFixed(2)}%</span>`;
+        }
+        
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${entry.time}</td>
+            <td>${typeHtml}</td>
+            <td><strong>${entry.amount} ${entry.coin}</strong></td>
+            <td>${formatCurrency(entry.price)}</td>
+            <td>${formatCurrency(entry.total)}</td>
+            <td>${profitHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
 
 // --- CUSTOM UI COMPONENTS (Toasts & Modals) ---
@@ -379,7 +424,7 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.classList.add('removing');
         setTimeout(() => toast.remove(), 300);
-    }, 4000); // Display for 4 seconds
+    }, 4000);
 }
 
 let confirmCallback = null;
@@ -403,32 +448,113 @@ function showConfirm(title, message, callback) {
 }
 
 
-// --- TABBING LOGIC ---
-document.getElementById('tab-trading').addEventListener('click', () => {
-    document.getElementById('tab-trading').classList.add('active');
-    document.getElementById('tab-portfolio').classList.remove('active');
-    document.getElementById('trading-view').classList.remove('hidden');
-    document.getElementById('portfolio-view').classList.add('hidden');
-});
+// --- LEADERBOARD LOGIC ---
+let leaderboardLimit = 10;
 
-document.getElementById('tab-portfolio').addEventListener('click', () => {
-    if(!user.isLoggedIn) {
-        showToast("Bitte logge dich zuerst ein, um dein Portfolio zu sehen.", "warning");
-        document.getElementById('login-modal').classList.remove('hidden');
-        document.getElementById('username').focus();
+function updateLeaderboardView() {
+    const tbody = document.getElementById('leaderboard-table-body');
+    const loadMoreBtn = document.getElementById('leaderboard-load-more');
+    if (!tbody || !loadMoreBtn) return;
+    
+    tbody.innerHTML = '';
+    let ranking = [];
+    
+    for (let username in usersDb) {
+        let uData = usersDb[username];
+        if (!uData.history || uData.history.length === 0) continue;
+        
+        let portfolioValue = 0;
+        if (uData.portfolio) {
+            Object.keys(cryptos).forEach(key => {
+                if (uData.portfolio[key] > 0) {
+                    portfolioValue += uData.portfolio[key] * cryptos[key].price;
+                }
+            });
+        }
+        
+        let totalNetWorth = uData.balance + portfolioValue;
+        ranking.push({
+            name: username,
+            balance: uData.balance,
+            portfolioValue: portfolioValue,
+            netWorth: totalNetWorth
+        });
+    }
+    
+    ranking.sort((a, b) => b.netWorth - a.netWorth);
+    
+    if (ranking.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 2rem;">Noch keine Trader für das Leaderboard qualifiziert.</td></tr>`;
+        loadMoreBtn.classList.add('hidden');
         return;
     }
-    document.getElementById('tab-portfolio').classList.add('active');
-    document.getElementById('tab-trading').classList.remove('active');
-    document.getElementById('trading-view').classList.add('hidden');
-    document.getElementById('portfolio-view').classList.remove('hidden');
     
-    if (!portfolioChart) initPortfolioChart();
-    updatePortfolioView();
+    let renderedCount = Math.min(ranking.length, leaderboardLimit);
+    for (let i = 0; i < renderedCount; i++) {
+        let r = ranking[i];
+        let isMe = (user.isLoggedIn && user.username === r.name);
+        let nameHtml = isMe ? `<strong style="color:var(--accent)">${r.name} (Du)</strong>` : `<strong>${r.name}</strong>`;
+        
+        let rankHtml = '';
+        if (i === 0) rankHtml = '🥇 1';
+        else if (i === 1) rankHtml = '🥈 2';
+        else if (i === 2) rankHtml = '🥉 3';
+        else rankHtml = `${i + 1}.`;
+        
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${rankHtml}</td>
+            <td>${nameHtml}</td>
+            <td>${formatCurrency(r.balance)}</td>
+            <td>${formatCurrency(r.portfolioValue)}</td>
+            <td style="color:var(--positive); font-weight:700;">${formatCurrency(r.netWorth)}</td>
+        `;
+        tbody.appendChild(tr);
+    }
+    
+    if (ranking.length > 10 && leaderboardLimit === 10) {
+        loadMoreBtn.classList.remove('hidden');
+    } else {
+        loadMoreBtn.classList.add('hidden');
+    }
+}
+
+document.getElementById('leaderboard-load-more').addEventListener('click', () => {
+    leaderboardLimit = 20;
+    updateLeaderboardView();
 });
 
 
-// --- AUTH & BUY LOGIC ---
+// --- TABBING LOGIC ---
+['tab-trading', 'tab-portfolio', 'tab-log', 'tab-leaderboard'].forEach(tab => {
+    document.getElementById(tab).addEventListener('click', (e) => {
+        if((tab === 'tab-portfolio' || tab === 'tab-log') && !user.isLoggedIn) {
+            showToast("Bitte logge dich zuerst ein.", "warning");
+            document.getElementById('login-modal').classList.remove('hidden');
+            document.getElementById('username').focus();
+            return;
+        }
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        e.target.classList.add('active');
+        
+        document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+        document.getElementById(tab.replace('tab-', '') + '-view').classList.remove('hidden');
+
+        if(tab === 'tab-portfolio') {
+            if(!portfolioChart) initPortfolioChart();
+            updatePortfolioView();
+        } else if(tab === 'tab-log') {
+            updateLogView();
+        } else if(tab === 'tab-leaderboard') {
+            leaderboardLimit = 10;
+            updateLeaderboardView();
+        }
+    });
+});
+
+
+// --- AUTH LOGIC ---
 let authMode = 'login';
 
 function showAuthMessage(msg, type = 'error') {
@@ -469,41 +595,45 @@ document.getElementById('submit-auth').addEventListener('click', doAuth);
 document.getElementById('password').addEventListener('keypress', (e) => { if (e.key === 'Enter') doAuth(); });
 
 function doAuth() {
-    const u = document.getElementById('username').value.trim();
+    const rawU = document.getElementById('username').value.trim();
     const p = document.getElementById('password').value;
     hideAuthMessage();
     
-    if (u === '' || p === '') { 
+    if (rawU === '' || p === '') { 
         showAuthMessage('Bitte Benutzername und Passwort eingeben.', 'error'); 
         return; 
     }
     
+    const lowerU = rawU.toLowerCase();
+    const existingKey = Object.keys(usersDb).find(k => k.toLowerCase() === lowerU);
+    
     if (authMode === 'register') {
-        if (usersDb[u]) { 
+        if (existingKey) { 
             showAuthMessage('Dieser Benutzername existiert bereits! Bitte wähle einen anderen.', 'error'); 
             return; 
         }
         
-        usersDb[u] = {
+        usersDb[rawU] = {
             password: p,
             balance: 100000.00,
             portfolio: { btc: 0, eth: 0, sol: 0, doge: 0 },
-            invested: { btc: 0, eth: 0, sol: 0, doge: 0 }
+            invested: { btc: 0, eth: 0, sol: 0, doge: 0 },
+            history: []
         };
         localStorage.setItem(USERS_KEY, JSON.stringify(usersDb));
         showToast('Registrierung erfolgreich! Du wurdest eingeloggt.', 'success');
-        loginUser(u);
+        loginUser(rawU);
     } else {
-        if (!usersDb[u]) { 
+        if (!existingKey) { 
             showAuthMessage('Benutzer existiert nicht. Bitte registriere dich zuerst.', 'error'); 
             return; 
         }
-        if (usersDb[u].password !== p) { 
+        if (usersDb[existingKey].password !== p) { 
             showAuthMessage('Falsches Passwort!', 'error'); 
             return; 
         }
         showToast('Erfolgreich eingeloggt.', 'success');
-        loginUser(u);
+        loginUser(existingKey);
     }
 }
 
@@ -512,6 +642,7 @@ function loginUser(u) {
     user.balance = usersDb[u].balance;
     user.portfolio = usersDb[u].portfolio || { btc: 0, eth: 0, sol: 0, doge: 0 };
     user.invested = usersDb[u].invested || { btc: 0, eth: 0, sol: 0, doge: 0 };
+    user.history = usersDb[u].history || [];
     
     localStorage.setItem(ACTIVE_USER_KEY, u);
     
@@ -529,6 +660,7 @@ document.getElementById('logout-btn').addEventListener('click', () => {
         user.balance = 0;
         user.portfolio = { btc: 0, eth: 0, sol: 0, doge: 0 };
         user.invested = { btc: 0, eth: 0, sol: 0, doge: 0 };
+        user.history = [];
         
         document.getElementById('tab-trading').click(); 
         updateUI(null);
@@ -536,6 +668,8 @@ document.getElementById('logout-btn').addEventListener('click', () => {
     });
 });
 
+
+// --- TRADING (BUY/SELL) LOGIC ---
 window.buyCrypto = function(key) {
     if (!user.isLoggedIn) return;
     let crypto = cryptos[key];
@@ -550,9 +684,19 @@ window.buyCrypto = function(key) {
     if (user.balance >= cost) {
         user.balance -= cost;
         user.portfolio[key] += amount;
-        user.invested[key] += cost; // update total cost basis for this coin
+        user.invested[key] += cost; 
         
-        saveUserState(); // Persist changes immediately
+        user.history.unshift({
+            time: new Date().toLocaleString('de-DE'),
+            type: 'buy',
+            coin: crypto.name,
+            amount: amount,
+            price: crypto.price,
+            total: cost,
+            profit: null
+        });
+        
+        saveUserState(); 
         
         updateUI(null);
         let btn = document.getElementById(`buy-btn-${key}`);
@@ -563,4 +707,56 @@ window.buyCrypto = function(key) {
     } else {
         showToast(`Nicht genug Guthaben!<br>Kosten: ${formatCurrency(cost)}<br>Guthaben: ${formatCurrency(user.balance)}`, 'error');
     }
+};
+
+window.sellCrypto = function(key) {
+    if (!user.isLoggedIn) return;
+    
+    let crypto = cryptos[key];
+    let amountInput = document.getElementById(`sell-amount-${key}`);
+    let amountToSell = parseFloat(amountInput.value);
+    let currentOwned = user.portfolio[key];
+    
+    if (isNaN(amountToSell) || amountToSell <= 0 || amountToSell > (currentOwned + 0.000001)) { 
+        showToast('Ungültige Menge. Du kannst nicht mehr verkaufen, als du besitzt.', 'error'); 
+        return; 
+    }
+    
+    if (amountToSell > currentOwned) amountToSell = currentOwned; // Handle floating point drifts gracefully
+    
+    let currentPrice = crypto.price;
+    let avgPrice = user.invested[key] / currentOwned;
+    if (isNaN(avgPrice) || !isFinite(avgPrice)) avgPrice = 0;
+    
+    let profitPercent = avgPrice > 0 ? ((currentPrice - avgPrice) / avgPrice) * 100 : 0;
+    let revenue = amountToSell * currentPrice;
+    
+    user.balance += revenue;
+    
+    // Decrease the aggregate cost basis proportionately
+    let proportion = amountToSell / currentOwned;
+    user.invested[key] -= (user.invested[key] * proportion);
+    user.portfolio[key] -= amountToSell;
+
+    // Zero out drift
+    if (user.portfolio[key] < 0.000001) {
+        user.portfolio[key] = 0;
+        user.invested[key] = 0;
+    }
+    
+    user.history.unshift({
+        time: new Date().toLocaleString('de-DE'),
+        type: 'sell',
+        coin: crypto.name,
+        amount: amountToSell,
+        price: currentPrice,
+        total: revenue,
+        profit: profitPercent
+    });
+    
+    saveUserState();
+    updatePortfolioView(); // Re-render local portfolio DOM
+    updateUI(null);
+    
+    showToast(`Verkauf erfolgreich: ${amountToSell} ${key.toUpperCase()} für ${formatCurrency(revenue)}`, 'success');
 };

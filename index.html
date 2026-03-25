@@ -16,6 +16,8 @@
                 <div class="tabs">
                     <button class="tab-btn active" id="tab-trading">Trading Dashboard</button>
                     <button class="tab-btn" id="tab-portfolio">Eigenes Portfolio</button>
+                    <button class="tab-btn" id="tab-log">Transaktions-Log</button>
+                    <button class="tab-btn" id="tab-leaderboard">Leaderboard</button>
                 </div>
             </div>
             <div class="header-right">
@@ -133,6 +135,7 @@
                                     <th>Ø Kaufkurs</th>
                                     <th>Aktueller Kurs</th>
                                     <th>Gewinn / Verlust</th>
+                                    <th>Aktion</th>
                                 </tr>
                             </thead>
                             <tbody id="portfolio-table-body">
@@ -151,6 +154,56 @@
                     </div>
                     <div class="chart-wrapper portfolio-large-chart">
                         <canvas id="portfolioChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LOG VIEW -->
+            <div id="log-view" class="view hidden">
+                <div class="portfolio-summary">
+                    <h2>Trading Historie</h2>
+                    <div class="table-container">
+                        <table class="portfolio-table">
+                            <thead>
+                                <tr>
+                                    <th>Datum & Zeit</th>
+                                    <th>Typ</th>
+                                    <th>Menge & Coin</th>
+                                    <th>Preis pro Coin</th>
+                                    <th>Gesamtwert</th>
+                                    <th>Gewinn / Verlust</th>
+                                </tr>
+                            </thead>
+                            <tbody id="log-table-body">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LEADERBOARD VIEW -->
+            <div id="leaderboard-view" class="view hidden">
+                <div class="portfolio-summary">
+                    <h2>Globales Leaderboard & Ranking</h2>
+                    <div class="table-container">
+                        <table class="portfolio-table">
+                            <thead>
+                                <tr>
+                                    <th>Rang</th>
+                                    <th>Trader</th>
+                                    <th>Konto (Liquid)</th>
+                                    <th>Portfolio-Wert</th>
+                                    <th>Gesamtvermögen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-table-body">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="text-align: center; margin-top: 1.5rem;">
+                        <button id="leaderboard-load-more" class="btn secondary hidden">Mehr anzeigen (Top 20)</button>
                     </div>
                 </div>
             </div>
@@ -189,12 +242,12 @@
 
     <!-- Custom Confirm Modal -->
     <div id="confirm-modal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-content confirm-modal-content">
             <h2 id="confirm-title">Bestätigung</h2>
             <p id="confirm-message" style="margin-bottom: 2rem;">Bist du sicher?</p>
-            <div class="modal-actions">
+            <div class="modal-actions" style="justify-content: center;">
                 <button id="confirm-cancel-btn" class="btn secondary">Abbrechen</button>
-                <button id="confirm-ok-btn" class="btn primary" style="background-color: var(--negative);">Ja, ausloggen</button>
+                <button id="confirm-ok-btn" class="btn primary" style="background-color: var(--negative);">Ja, bestätigen</button>
             </div>
         </div>
     </div>

@@ -40,7 +40,7 @@ body {
 .main-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end; /* changed for tab alignment */
+    align-items: flex-end;
     margin-bottom: 3rem;
     flex-wrap: wrap;
     gap: 1.5rem;
@@ -71,7 +71,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     padding-bottom: 0.5rem;
-    margin-bottom: -1rem; /* overlap border */
+    margin-bottom: -1rem; 
     border-bottom: 3px solid transparent;
     transition: all 0.2s;
     font-family: inherit;
@@ -136,12 +136,10 @@ body {
 .btn.primary:hover:not(:disabled) { background-color: #2563eb; }
 .btn.secondary { background-color: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
 .btn.secondary:hover { background-color: rgba(255, 255, 255, 0.05); color: white; }
-.buy-btn { background-color: var(--positive); color: white; padding: 0.5rem 1rem; }
+.buy-btn { background-color: var(--positive); color: white; padding: 0.5rem 1rem; flex-shrink: 0; }
 .buy-btn:hover:not(:disabled) { background-color: #16a34a; }
 
-.dashboard {
-    width: 100%;
-}
+.dashboard { width: 100%; }
 
 /* Cards (Trading View) */
 .cards {
@@ -176,13 +174,22 @@ body {
 .trading-controls { background: rgba(0, 0, 0, 0.15); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid var(--border); }
 .portfolio-info { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
 .portfolio-info span { color: white; font-weight: 700; }
-.buy-form { display: flex; gap: 0.75rem; }
-.buy-form input { flex: 1; background: var(--card-bg); border: 1px solid var(--border); color: white; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-family: inherit; font-size: 1rem; }
+.buy-form { display: flex; gap: 0.75rem; align-items: center; }
+.buy-form input { flex: 1; min-width: 0; background: var(--card-bg); border: 1px solid var(--border); color: white; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-family: inherit; font-size: 1rem; }
 .buy-form input:focus { outline: none; border-color: var(--accent); }
 .buy-form input:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.chart-wrapper { position: relative; height: 250px; width: 100%; margin-top: auto; }
+/* FIX Spinners on Number inputs */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+input[type=number] {
+    -moz-appearance: textfield;
+}
 
+.chart-wrapper { position: relative; height: 250px; width: 100%; margin-top: auto; }
 
 /* Portfolio View */
 .portfolio-summary {
@@ -193,107 +200,77 @@ body {
     margin-bottom: 2rem;
 }
 
-.portfolio-summary h2 {
-    margin-bottom: 1.5rem;
-    color: white;
-}
+.portfolio-summary h2 { margin-bottom: 1.5rem; color: white; }
 
-.table-container {
-    overflow-x: auto;
-}
+.table-container { overflow-x: auto; }
 
 .portfolio-table {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
 }
-
-.portfolio-table th {
-    color: var(--text-secondary);
-    font-weight: 600;
-    padding: 1rem;
-    border-bottom: 1px solid var(--border);
-}
-
-.portfolio-table td {
-    padding: 1rem;
-    border-bottom: 1px solid var(--border);
-    color: white;
-    font-weight: 500;
-}
-
-.portfolio-table tr:last-child td {
-    border-bottom: none;
-}
+.portfolio-table th { color: var(--text-secondary); font-weight: 600; padding: 1rem; border-bottom: 1px solid var(--border); }
+.portfolio-table td { padding: 1rem; border-bottom: 1px solid var(--border); color: white; font-weight: 500; }
+.portfolio-table tr:last-child td { border-bottom: none; }
 
 .pl-positive { color: var(--positive); font-weight: 700 !important; }
 .pl-negative { color: var(--negative); font-weight: 700 !important; }
 
-/* Portfolio Chart specific */
-.portfolio-chart-section {
-    background: var(--card-bg);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    border: 1px solid var(--border);
-}
-
-.chart-header {
+/* Portfolio Sell Logic & Buttons */
+.sell-form {
     display: flex;
-    justify-content: space-between;
+    gap: 0.5rem;
     align-items: center;
-    margin-bottom: 1.5rem;
 }
-
-.chart-header h2 {
-    color: white;
-}
-
-.chart-header select {
+.sell-input {
+    width: 80px;
     background: #0f172a;
-    color: white;
     border: 1px solid var(--border);
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
+    color: white;
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.4rem;
     font-family: inherit;
-    font-size: 1rem;
-    outline: none;
+    font-size: 0.95rem;
+}
+.sell-input:focus { outline: none; border-color: var(--negative); }
+.btn.small {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+.sell-btn {
+    background-color: transparent;
+    border: 1px solid var(--negative);
+    color: var(--negative);
+    border-radius: 0.4rem;
+    font-weight: 600;
     cursor: pointer;
+    transition: 0.2s;
+}
+.sell-btn:hover:not(:disabled) {
+    background-color: var(--negative);
+    color: white;
 }
 
-.chart-header select:focus {
-    border-color: var(--accent);
-}
-
-.portfolio-large-chart {
-    height: 400px;
-}
+/* Portfolio Chart specific */
+.portfolio-chart-section { background: var(--card-bg); border-radius: 1rem; padding: 1.5rem; border: 1px solid var(--border); }
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.chart-header h2 { color: white; }
+.chart-header select { background: #0f172a; color: white; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 0.5rem; font-family: inherit; font-size: 1rem; outline: none; cursor: pointer; }
+.chart-header select:focus { border-color: var(--accent); }
+.portfolio-large-chart { height: 400px; }
 
 /* Modal */
 .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
 .modal-content { background: var(--card-bg); padding: 2.5rem; border-radius: 1rem; border: 1px solid var(--border); width: 100%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75); }
+
 .auth-tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
 .auth-tab { background: transparent; color: var(--text-secondary); border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; padding: 0.5rem; }
 .auth-tab:hover { color: white; }
 .auth-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); margin-bottom: -0.6rem; }
 
-.auth-message-box {
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-    font-size: 0.95rem;
-    font-weight: 500;
-    text-align: center;
-}
-.auth-message-box.error {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: var(--negative);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-.auth-message-box.success {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: var(--positive);
-    border: 1px solid rgba(34, 197, 94, 0.3);
-}
+.auth-message-box { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.95rem; font-weight: 500; text-align: center; }
+.auth-message-box.error { background-color: rgba(239, 68, 68, 0.1); color: var(--negative); border: 1px solid rgba(239, 68, 68, 0.3); }
+.auth-message-box.success { background-color: rgba(34, 197, 94, 0.1); color: var(--positive); border: 1px solid rgba(34, 197, 94, 0.3); }
 
 .modal-content h2 { margin-bottom: 0.5rem; color: white; }
 .modal-content p { color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.5; }
@@ -304,6 +281,24 @@ body {
 .form-group input::placeholder { color: #475569; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
 
+/* Custom Confirm overrides */
+.confirm-modal-content { text-align: center; }
+.confirm-modal-content h2 { margin-bottom: 1rem; }
+.confirm-modal-content .modal-actions { justify-content: center; }
+
 .hidden {
     display: none !important;
+}
+
+/* Toast Notifications */
+.toast-container { position: fixed; top: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 1rem; pointer-events: none; }
+.toast { background: var(--card-bg); border-left: 4px solid var(--accent); color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); display: flex; align-items: center; gap: 0.75rem; pointer-events: auto; animation: slideInRight 0.3s ease forwards; transition: opacity 0.3s ease, transform 0.3s ease; font-size: 0.95rem; max-width: 350px; line-height: 1.4; }
+.toast.removing { opacity: 0; transform: translateX(100%); }
+.toast.success { border-left-color: var(--positive); }
+.toast.error { border-left-color: var(--negative); }
+.toast.warning { border-left-color: #f59e0b; }
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
