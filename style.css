@@ -271,6 +271,30 @@ body {
 /* Modal */
 .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
 .modal-content { background: var(--card-bg); padding: 2.5rem; border-radius: 1rem; border: 1px solid var(--border); width: 100%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75); }
+.auth-tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+.auth-tab { background: transparent; color: var(--text-secondary); border: none; font-size: 1.1rem; font-weight: 600; cursor: pointer; font-family: inherit; padding: 0.5rem; }
+.auth-tab:hover { color: white; }
+.auth-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); margin-bottom: -0.6rem; }
+
+.auth-message-box {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-align: center;
+}
+.auth-message-box.error {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--negative);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.auth-message-box.success {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--positive);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
 .modal-content h2 { margin-bottom: 0.5rem; color: white; }
 .modal-content p { color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.5; }
 .form-group { margin-bottom: 1.5rem; }

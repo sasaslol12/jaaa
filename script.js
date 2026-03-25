@@ -1,3 +1,10 @@
+// LocalStorage DB
+const USERS_KEY = 'crypto_sim_users';
+const ACTIVE_USER_KEY = 'crypto_sim_active_user';
+
+let usersDb = JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+let activeUsername = localStorage.getItem(ACTIVE_USER_KEY);
+
 // Application State for Trading
 let user = {
     isLoggedIn: false,
@@ -6,6 +13,25 @@ let user = {
     portfolio: { btc: 0, eth: 0, sol: 0, doge: 0 },
     invested: { btc: 0, eth: 0, sol: 0, doge: 0 }
 };
+
+if (activeUsername && usersDb[activeUsername]) {
+    user.isLoggedIn = true;
+    user.username = activeUsername;
+    user.balance = usersDb[activeUsername].balance;
+    user.portfolio = usersDb[activeUsername].portfolio;
+    user.invested = usersDb[activeUsername].invested || { btc: 0, eth: 0, sol: 0, doge: 0 };
+} else {
+    localStorage.removeItem(ACTIVE_USER_KEY);
+}
+
+function saveUserState() {
+    if (user.isLoggedIn && user.username) {
+        usersDb[user.username].balance = user.balance;
+        usersDb[user.username].portfolio = user.portfolio;
+        usersDb[user.username].invested = user.invested;
+        localStorage.setItem(USERS_KEY, JSON.stringify(usersDb));
+    }
+}
 
 // Cryptos setup
 const cryptos = {
@@ -341,6 +367,42 @@ function updatePortfolioChartData() {
 document.getElementById('portfolio-chart-selector').addEventListener('change', updatePortfolioChartData);
 
 
+// --- CUSTOM UI COMPONENTS (Toasts & Modals) ---
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('removing');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000); // Display for 4 seconds
+}
+
+let confirmCallback = null;
+const confirmModal = document.getElementById('confirm-modal');
+
+document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+    confirmModal.classList.add('hidden');
+    confirmCallback = null;
+});
+
+document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+    confirmModal.classList.add('hidden');
+    if (confirmCallback) confirmCallback();
+});
+
+function showConfirm(title, message, callback) {
+    document.getElementById('confirm-title').innerText = title;
+    document.getElementById('confirm-message').innerHTML = message;
+    confirmCallback = callback;
+    confirmModal.classList.remove('hidden');
+}
+
+
 // --- TABBING LOGIC ---
 document.getElementById('tab-trading').addEventListener('click', () => {
     document.getElementById('tab-trading').classList.add('active');
@@ -351,7 +413,7 @@ document.getElementById('tab-trading').addEventListener('click', () => {
 
 document.getElementById('tab-portfolio').addEventListener('click', () => {
     if(!user.isLoggedIn) {
-        alert("Bitte logge dich ein, um dein Portfolio zu sehen.");
+        showToast("Bitte logge dich zuerst ein, um dein Portfolio zu sehen.", "warning");
         document.getElementById('login-modal').classList.remove('hidden');
         document.getElementById('username').focus();
         return;
@@ -367,33 +429,111 @@ document.getElementById('tab-portfolio').addEventListener('click', () => {
 
 
 // --- AUTH & BUY LOGIC ---
-document.getElementById('login-modal-btn').addEventListener('click', () => { document.getElementById('login-modal').classList.remove('hidden'); document.getElementById('username').focus(); });
-document.getElementById('cancel-login').addEventListener('click', () => { document.getElementById('login-modal').classList.add('hidden'); document.getElementById('username').value = ''; document.getElementById('password').value = ''; });
-document.getElementById('submit-login').addEventListener('click', doLogin);
-document.getElementById('password').addEventListener('keypress', (e) => { if (e.key === 'Enter') doLogin(); });
+let authMode = 'login';
 
-function doLogin() {
-    const u = document.getElementById('username').value.trim(), p = document.getElementById('password').value;
-    if (u !== '' && p !== '') {
-        user.isLoggedIn = true; user.username = u;
-        user.balance = 100000.00;
-        user.portfolio = { btc: 0, eth: 0, sol: 0, doge: 0 };
-        user.invested = { btc: 0, eth: 0, sol: 0, doge: 0 };
-        document.getElementById('login-modal').classList.add('hidden');
-        document.getElementById('username').value = ''; document.getElementById('password').value = '';
-        updateUI(null);
-    } else alert('Bitte Benutzername und Passwort eingeben.');
+function showAuthMessage(msg, type = 'error') {
+    const box = document.getElementById('auth-message-box');
+    box.innerHTML = msg;
+    box.className = `auth-message-box ${type}`;
+    box.classList.remove('hidden');
+}
+
+function hideAuthMessage() {
+    const box = document.getElementById('auth-message-box');
+    if(box) box.classList.add('hidden');
+}
+
+document.getElementById('tab-login-form').addEventListener('click', () => {
+    hideAuthMessage();
+    authMode = 'login';
+    document.getElementById('tab-login-form').classList.add('active');
+    document.getElementById('tab-register-form').classList.remove('active');
+    document.getElementById('auth-title').innerText = 'Account Login';
+    document.getElementById('auth-desc').innerText = 'Logge dich ein, um weiter zu traden.';
+    document.getElementById('submit-auth').innerText = 'Einloggen';
+});
+
+document.getElementById('tab-register-form').addEventListener('click', () => {
+    hideAuthMessage();
+    authMode = 'register';
+    document.getElementById('tab-register-form').classList.add('active');
+    document.getElementById('tab-login-form').classList.remove('active');
+    document.getElementById('auth-title').innerText = 'Neuen Account erstellen';
+    document.getElementById('auth-desc').innerText = 'Registriere dich, um mit $100.000 Startkapital loszulegen.';
+    document.getElementById('submit-auth').innerText = 'Registrieren';
+});
+
+document.getElementById('login-modal-btn').addEventListener('click', () => { hideAuthMessage(); document.getElementById('login-modal').classList.remove('hidden'); document.getElementById('username').focus(); });
+document.getElementById('cancel-login').addEventListener('click', () => { document.getElementById('login-modal').classList.add('hidden'); document.getElementById('username').value = ''; document.getElementById('password').value = ''; hideAuthMessage(); });
+document.getElementById('submit-auth').addEventListener('click', doAuth);
+document.getElementById('password').addEventListener('keypress', (e) => { if (e.key === 'Enter') doAuth(); });
+
+function doAuth() {
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value;
+    hideAuthMessage();
+    
+    if (u === '' || p === '') { 
+        showAuthMessage('Bitte Benutzername und Passwort eingeben.', 'error'); 
+        return; 
+    }
+    
+    if (authMode === 'register') {
+        if (usersDb[u]) { 
+            showAuthMessage('Dieser Benutzername existiert bereits! Bitte wähle einen anderen.', 'error'); 
+            return; 
+        }
+        
+        usersDb[u] = {
+            password: p,
+            balance: 100000.00,
+            portfolio: { btc: 0, eth: 0, sol: 0, doge: 0 },
+            invested: { btc: 0, eth: 0, sol: 0, doge: 0 }
+        };
+        localStorage.setItem(USERS_KEY, JSON.stringify(usersDb));
+        showToast('Registrierung erfolgreich! Du wurdest eingeloggt.', 'success');
+        loginUser(u);
+    } else {
+        if (!usersDb[u]) { 
+            showAuthMessage('Benutzer existiert nicht. Bitte registriere dich zuerst.', 'error'); 
+            return; 
+        }
+        if (usersDb[u].password !== p) { 
+            showAuthMessage('Falsches Passwort!', 'error'); 
+            return; 
+        }
+        showToast('Erfolgreich eingeloggt.', 'success');
+        loginUser(u);
+    }
+}
+
+function loginUser(u) {
+    user.isLoggedIn = true; user.username = u;
+    user.balance = usersDb[u].balance;
+    user.portfolio = usersDb[u].portfolio || { btc: 0, eth: 0, sol: 0, doge: 0 };
+    user.invested = usersDb[u].invested || { btc: 0, eth: 0, sol: 0, doge: 0 };
+    
+    localStorage.setItem(ACTIVE_USER_KEY, u);
+    
+    document.getElementById('login-modal').classList.add('hidden');
+    document.getElementById('username').value = ''; document.getElementById('password').value = '';
+    updateUI(null);
 }
 
 document.getElementById('logout-btn').addEventListener('click', () => {
-    if(confirm('Wirklich ausloggen? Dein Fortschritt geht verloren.')) {
+    showConfirm('Logout bestätigen', 'Möchtest du dich wirklich aus deinem Trading-Konto ausloggen?', () => {
+        saveUserState();
         user.isLoggedIn = false; user.username = '';
-        user.balance = 100000.00;
+        localStorage.removeItem(ACTIVE_USER_KEY);
+        
+        user.balance = 0;
         user.portfolio = { btc: 0, eth: 0, sol: 0, doge: 0 };
         user.invested = { btc: 0, eth: 0, sol: 0, doge: 0 };
+        
         document.getElementById('tab-trading').click(); 
         updateUI(null);
-    }
+        showToast('Du wurdest erfolgreich ausgeloggt.', 'success');
+    });
 });
 
 window.buyCrypto = function(key) {
@@ -401,7 +541,10 @@ window.buyCrypto = function(key) {
     let crypto = cryptos[key];
     let amount = parseFloat(document.getElementById(`buy-amount-${key}`).value);
     
-    if (isNaN(amount) || amount <= 0) { alert('Ungültige Menge.'); return; }
+    if (isNaN(amount) || amount <= 0) { 
+        showToast('Ungültige Menge. Bitte überprüfe deine Eingabe.', 'error'); 
+        return; 
+    }
     
     let cost = amount * crypto.price;
     if (user.balance >= cost) {
@@ -409,11 +552,15 @@ window.buyCrypto = function(key) {
         user.portfolio[key] += amount;
         user.invested[key] += cost; // update total cost basis for this coin
         
+        saveUserState(); // Persist changes immediately
+        
         updateUI(null);
         let btn = document.getElementById(`buy-btn-${key}`);
         let initText = btn.innerText; btn.innerText = 'Gekauft!'; btn.style.backgroundColor = '#16a34a';
         setTimeout(() => { btn.innerText = initText; btn.style.backgroundColor = ''; }, 1200);
+        
+        showToast(`Kauf erfolgreich: ${amount} ${key.toUpperCase()} für ${formatCurrency(cost)}`, 'success');
     } else {
-        alert(`Nicht genug Guthaben!\nKosten: ${formatCurrency(cost)}\nGuthaben: ${formatCurrency(user.balance)}`);
+        showToast(`Nicht genug Guthaben!<br>Kosten: ${formatCurrency(cost)}<br>Guthaben: ${formatCurrency(user.balance)}`, 'error');
     }
 };

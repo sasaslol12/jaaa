@@ -158,11 +158,17 @@
         </div>
     </div>
 
-    <!-- Login Modal -->
+    <!-- Auth Modal -->
     <div id="login-modal" class="modal hidden">
         <div class="modal-content">
-            <h2>Account Login</h2>
-            <p>Logge dich ein, um mit $100.000 Startkapital zu traden.</p>
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-login-form">Login</button>
+                <button class="auth-tab" id="tab-register-form">Registrieren</button>
+            </div>
+            
+            <h2 id="auth-title">Account Login</h2>
+            <p id="auth-desc">Logge dich ein, um weiter zu traden.</p>
+            <div id="auth-message-box" class="auth-message-box hidden"></div>
             <div class="form-group">
                 <label for="username">Benutzername</label>
                 <input type="text" id="username" placeholder="Dein Name">
@@ -173,7 +179,22 @@
             </div>
             <div class="modal-actions">
                 <button id="cancel-login" class="btn secondary">Abbrechen</button>
-                <button id="submit-login" class="btn primary">Einloggen</button>
+                <button id="submit-auth" class="btn primary">Einloggen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="confirm-title">Bestätigung</h2>
+            <p id="confirm-message" style="margin-bottom: 2rem;">Bist du sicher?</p>
+            <div class="modal-actions">
+                <button id="confirm-cancel-btn" class="btn secondary">Abbrechen</button>
+                <button id="confirm-ok-btn" class="btn primary" style="background-color: var(--negative);">Ja, ausloggen</button>
             </div>
         </div>
     </div>
